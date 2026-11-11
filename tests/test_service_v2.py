@@ -2634,6 +2634,23 @@ def test_count_with_chainable_filter_eq_operator(service):
 
 
 @responses.activate
+def test_get_entity_set_query_filter_double_keeps_precision(service):
+    """Double values in $filter keep all their significant digits"""
+
+    # pylint: disable=redefined-outer-name
+
+    responses.add(
+        responses.GET,
+        f"{service.url}/TemperatureMeasurements?%24filter=Value%20eq%201.234567891E%2B06",
+        json={'d': {'results': []}},
+        status=200)
+
+    request = service.entity_sets.TemperatureMeasurements.get_entities().filter(Value=1234567.891)
+
+    assert request.execute() == []
+
+
+@responses.activate
 def test_count_with_chainable_filter_in_operator(service):
     """Check getting $count with $filter in"""
 

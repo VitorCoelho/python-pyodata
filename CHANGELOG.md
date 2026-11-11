@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- model: `Edm.Double`, `Edm.Single` and `Edm.Float` literals and JSON values keep all significant digits of a float instead of rounding to 6 decimal places, so filters and created or updated entities no longer change values such as `1234567.891` to `1.234568E+06` - Vitor Coelho
 
 ## [1.12.2]
 

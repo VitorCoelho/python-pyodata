@@ -516,6 +516,40 @@ def test_traits():
     assert str(e_info.value).startswith("Malformed value '1234-56' for primitive")
 
 
+@pytest.mark.parametrize('type_name,value,expected', [
+    ('Edm.Double', 1234567.891, '1.234567891E+06'),
+    ('Edm.Double', 21.123456789, '2.1123456789E+01'),
+    ('Edm.Double', 0.1 + 0.2, '3.0000000000000004E-01'),
+    ('Edm.Float', 1234567.891, '1.234567891E+06'),
+    ('Edm.Single', 0.000012345, '0.000012345'),
+    ('Edm.Single', 21.123456789, '21.123456789'),
+    # values the default format already represents exactly keep their current literal
+    ('Edm.Double', 2.029, '2.029000E+00'),
+    ('Edm.Double', 1.0E+30, '1.000000E+30'),
+    ('Edm.Double', 5, '5.000000E+00'),
+    ('Edm.Single', 2.029, '2.029000'),
+])
+def test_traits_floating_point_keeps_significant_digits(type_name, value, expected):
+    """Floats with more significant digits than the default format are not rounded"""
+
+    traits = Types.from_name(type_name).traits
+    assert traits.to_literal(value) == expected
+    assert traits.to_json(value) == expected
+    assert traits.from_literal(expected) == value
+
+
+def test_traits_floating_point_float_subclass():
+    """Float subclasses with their own repr (e.g. numpy.float64) are formatted like floats"""
+
+    class CustomFloat(float):
+        def __repr__(self):
+            return f'CustomFloat({float(self)!r})'
+
+    assert Types.from_name('Edm.Double').traits.to_literal(CustomFloat(1234567.891)) == '1.234567891E+06'
+    assert Types.from_name('Edm.Single').traits.to_literal(CustomFloat(0.000012345)) == '0.000012345'
+    assert Types.from_name('Edm.Double').traits.to_literal(CustomFloat(2.029)) == '2.029000E+00'
+
+
 @pytest.mark.parametrize('datetime_literal,expected', [
     ('2001-02-03T04:05:06.000007', datetime(2001, 2, 3, 4, 5, 6, microsecond=7)),
     ('2001-02-03T04:05:06', datetime(2001, 2, 3, 4, 5, 6, 0)),

@@ -9,10 +9,12 @@ Date:   2017-08-21
 import base64
 import collections
 import datetime
+import decimal
 from enum import Enum, auto
 import io
 import itertools
 import logging
+import math
 import re
 import warnings
 from abc import ABC, abstractmethod
@@ -643,7 +645,22 @@ class EdmFPNumTypTraits(TypTraits):
         return EdmFPNumTypTraits(7, 'f', '{:f}')
 
     def to_literal(self, value):
-        return self.conversion.format(value)
+        literal = self.conversion.format(value)
+
+        # The default formats keep only 6 decimal places, which silently rounds floats with more
+        # significant digits (e.g. 1234567.891 -> 1.234568E+06). Keep the default output when it
+        # reads back as the same value and fall back to the shortest exact representation otherwise.
+        if not isinstance(value, float) or not math.isfinite(value) or float(literal) == value:
+            return literal
+
+        # float() so that subclasses with a custom repr (e.g. numpy.float64) are handled too
+        value = float(value)
+        shortest = decimal.Decimal(repr(value))
+        if self.conversion == '{:E}':
+            decimal_places = len(shortest.normalize().as_tuple().digits) - 1
+            return f'{value:.{decimal_places}E}'
+
+        return f'{shortest:f}'
 
     def to_json(self, value):
         return self.to_literal(value)
